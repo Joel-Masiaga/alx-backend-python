@@ -4,15 +4,19 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from .models import User, Conversation, Message
 from .serializers import UserSerializer, ConversationSerializer, MessageSerializer
+from .permissions import IsParticipantOfConversation
+from django_filters.rest_framework import DjangoFilterBackend
+from .filters import MessageFilter
+from .pagination import MessagePagination
 
 class ConversationViewSet(viewsets.ModelViewSet):
     queryset = Conversation.objects.all()
     serializer_class = ConversationSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['title', 'participants__username']  # Allow search by title and participant username
-    ordering_fields = ['created_at']  # Allow ordering by created date
-
+    search_fields = ['title', 'participants__username'] 
+    ordering_fields = ['created_at']  
+    permission_classes = [IsAuthenticated]
     def create(self, request, *args, **kwargs):
         title = request.data.get('title')
         participants_ids = request.data.get('participants', [])
@@ -54,7 +58,15 @@ class ConversationViewSet(viewsets.ModelViewSet):
 class MessageViewSet(viewsets.ModelViewSet):
     queryset = Message.objects.all()
     serializer_class = MessageSerializer
-    permission_classes = [IsAuthenticated]
-    filter_backends = [filters.OrderingFilter]
-    ordering_fields = ['sent_at']  # Allow ordering messages by sent time
-    ordering = ['-sent_at']  # Default ordering: newest first
+    permission_classes = [IsParticipantOfConversation]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_class = MessageFilter
+    ordering_fields = ['sent_at']
+    ordering = ['-sent_at']
+    pagination_class = MessagePagination
+
+    def get_queryset(self):
+        return self.queryset.filter(conversation__participants=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(sender=self.request.user)
