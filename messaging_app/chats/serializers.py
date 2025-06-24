@@ -4,14 +4,27 @@ from .models import User, Conversation, Message
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'display_name']
+        fields = [
+            'user_id',
+            'email',
+            'first_name',
+            'last_name',
+            'phone_number',
+            'display_name',
+            'username'
+        ]
 
 class MessageSerializer(serializers.ModelSerializer):
     sender = UserSerializer(read_only=True)
 
     class Meta:
         model = Message
-        fields = ['id', 'sender', 'content', 'timestamp']
+        fields = [
+            'message_id',
+            'sender',
+            'message_body',
+            'sent_at'
+        ]
 
 class ConversationSerializer(serializers.ModelSerializer):
     participants = UserSerializer(many=True, read_only=True)
@@ -19,4 +32,9 @@ class ConversationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Conversation
-        fields = ['id', 'participants', 'created_at', 'messages']
+        fields = [
+            'conversation_id',
+            'participants',
+            'created_at',
+            'messages'
+        ]
