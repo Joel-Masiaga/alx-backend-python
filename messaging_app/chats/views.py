@@ -10,9 +10,26 @@ class ConversationViewSet(viewsets.ModelViewSet):
     serializer_class = ConversationSerializer
     permission_classes = [IsAuthenticated]
 
-    def perform_create(self, serializer):
-        # Allow clients to specify participants when creating a conversation
-        serializer.save()
+    def create(self, request, *args, **kwargs):
+        title = request.data.get('title')
+        participants_ids = request.data.get('participants', [])
+
+        if not title:
+            return Response({'error': 'Title is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not isinstance(participants_ids, list) or not participants_ids:
+            return Response({'error': 'Participants must be a non-empty list of user IDs.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        participants = User.objects.filter(user_id__in=participants_ids)
+
+        if not participants.exists():
+            return Response({'error': 'No valid participants found.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        conversation = Conversation.objects.create(title=title)
+        conversation.participants.set(participants)
+        conversation.save()
+
+        serializer = self.get_serializer(conversation)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'])
     def add_message(self, request, pk=None):
