@@ -14,9 +14,9 @@ class ConversationViewSet(viewsets.ModelViewSet):
     serializer_class = ConversationSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['title', 'participants__username'] 
-    ordering_fields = ['created_at']  
-    permission_classes = [IsAuthenticated]
+    search_fields = ['title', 'participants__username']
+    ordering_fields = ['created_at']
+
     def create(self, request, *args, **kwargs):
         title = request.data.get('title')
         participants_ids = request.data.get('participants', [])
@@ -47,6 +47,11 @@ class ConversationViewSet(viewsets.ModelViewSet):
         if not message_body:
             return Response({'error': 'message_body is required'}, status=status.HTTP_400_BAD_REQUEST)
 
+        conversation_id = conversation.conversation_id
+
+        if sender not in conversation.participants.all():
+            return Response({'error': 'You are not a participant in this conversation.'}, status=status.HTTP_403_FORBIDDEN)
+
         message = Message.objects.create(
             conversation=conversation,
             sender=sender,
@@ -54,6 +59,19 @@ class ConversationViewSet(viewsets.ModelViewSet):
         )
         serializer = MessageSerializer(message)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['get'])
+    def messages(self, request, pk=None):
+        conversation = self.get_object()
+        conversation_id = conversation.conversation_id  
+
+        if request.user not in conversation.participants.all():
+            return Response({'error': 'You are not authorized to view these messages.'}, status=status.HTTP_403_FORBIDDEN)
+
+        messages = Message.objects.filter(conversation=conversation)
+        serializer = MessageSerializer(messages, many=True)
+        return Response(serializer.data)
+
 
 class MessageViewSet(viewsets.ModelViewSet):
     queryset = Message.objects.all()
