@@ -152,3 +152,7 @@ REST_FRAMEWORK = {
 }
 
 from rest_framework.pagination import PageNumberPagination
+
+SIMPLE_JWT = {
+    'USER_ID_FIELD': 'user_id',
+}
