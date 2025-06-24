@@ -44,8 +44,10 @@ class TestGithubOrgClient(unittest.TestCase):
         test_repos = [{"name": "repo1"}, {"name": "repo2"}]
         mock_get_json.return_value = test_repos
 
-        with patch('client.GithubOrgClient._public_repos_url',
-                  new_callable=PropertyMock) as mock_url:
+        with patch(
+            'client.GithubOrgClient._public_repos_url',
+            new_callable=PropertyMock
+        ) as mock_url:
             mock_url.return_value = "https://api.github.com/orgs/google/repos"
             client = GithubOrgClient("google")
             self.assertEqual(client.public_repos(), ["repo1", "repo2"])
@@ -109,4 +111,3 @@ class TestIntegrationGithubOrgClient(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-    
