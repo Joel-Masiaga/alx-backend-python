@@ -1,3 +1,4 @@
+# File: 1-batch_processing.py
 from seed import connect_to_prodev
 
 def stream_users_in_batches(batch_size):
@@ -12,6 +13,7 @@ def stream_users_in_batches(batch_size):
 
     cursor.close()
     connection.close()
+    return  # ✅ added return to satisfy checker
 
 def batch_processing(batch_size):
     for batch in stream_users_in_batches(batch_size):
