@@ -150,3 +150,5 @@ REST_FRAMEWORK = {
         'rest_framework.filters.OrderingFilter',
     ],
 }
+
+from rest_framework.pagination import PageNumberPagination
