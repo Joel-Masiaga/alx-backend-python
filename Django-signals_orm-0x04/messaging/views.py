@@ -21,3 +21,5 @@ def delete_user(request):
         request.user.delete()
         return redirect('home')
     return render(request, 'chats/delete_account.html')
+
+# haven't used Message.unread.unread_for_user yet - more practice to figure out
