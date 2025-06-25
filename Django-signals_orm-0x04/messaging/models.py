@@ -12,6 +12,7 @@ class Message(models.Model):
     read = models.BooleanField(default=False)
     parent_message = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE, related_name='replies')
 
+    objects = models.Manager()
     objects = UnreadMessagesManager() 
 
 class Notification(models.Model):
