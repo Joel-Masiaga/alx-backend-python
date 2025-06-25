@@ -7,9 +7,13 @@ from django.views.decorators.cache import cache_page
 @cache_page(60)
 @login_required
 def conversation_view(request):
-    # Use the unread manager and include .only()
     messages = Message.unread.unread_for_user(request.user)
     return render(request, 'chats/conversation.html', {'messages': messages})
+
+@login_required
+def all_messages_view(request):
+    messages = Message.objects.filter(receiver=request.user).select_related('sender')
+    return render(request, 'chats/all_messages.html', {'messages': messages})
 
 @login_required
 def delete_user(request):
