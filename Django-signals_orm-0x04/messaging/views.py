@@ -7,7 +7,7 @@ from django.views.decorators.cache import cache_page
 @cache_page(60)
 @login_required
 def conversation_view(request):
-    messages = Message.unread.filter(receiver=request.user, read=False).only('id', 'sender', 'content', 'timestamp')
+    messages = Message.unread.unread_for_user(request.user).only('id', 'sender', 'content', 'timestamp')
     return render(request, 'chats/conversation.html', {'messages': messages})
 
 @login_required
