@@ -1,0 +1,9 @@
+#!/bin/bash
+
+kubectl scale deployment messaging-app --replicas=3
+
+kubectl get pods
+
+wrk -t2 -c100 -d30s http://$(minikube ip):PORT
+
+kubectl top pods

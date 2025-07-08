@@ -1,0 +1,12 @@
+#!/bin/bash
+
+kubectl apply -f blue_deployment.yaml
+
+kubectl rollout status deployment/messaging-app-blue
+
+for i in {1..10}; do
+  curl -s http://$(minikube ip)/api/
+  sleep 1
+done
+
+kubectl get pods
