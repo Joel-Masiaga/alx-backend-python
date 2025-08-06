@@ -4,14 +4,16 @@ pipeline {
   environment {
     GITHUB_CREDENTIALS = credentials('GITHUB_CREDENTIALS_ID')
     DOCKERHUB_CRED = credentials('DOCKERHUB_CREDENTIAL_ID')
-    IMAGE_NAME = "joel/messaging_app"
+    IMAGE_NAME = "joel208/messaging_app"
     IMAGE_TAG = "${env.BUILD_NUMBER}"
   }
 
   stages {
     stage('Checkout') {
       steps {
-        checkout scm
+        git branch: 'main',
+            credentialsId: 'GITHUB_CREDENTIALS_ID',
+            url: 'https://github.com/Joel-Masiaga/alx-backend-python.git'
       }
     }
 
@@ -20,9 +22,9 @@ pipeline {
         sh '''
           python3 -m venv .venv
           . .venv/bin/activate
-          pip install --upgrade pip
-          pip install -r requirements.txt || true
-          pip install pytest pytest-cov
+          pip3 install --upgrade pip
+          pip3 install -r messaging_app/requirements.txt || true
+          pip3 install pytest pytest-cov
         '''
       }
     }
@@ -50,7 +52,7 @@ pipeline {
       steps {
         sh '''
           . .venv/bin/activate
-          pip install flake8
+          pip3 install flake8
           flake8 || true
         '''
       }
