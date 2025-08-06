@@ -1,0 +1,95 @@
+name: CI — Tests
+
+on:
+  push:
+    paths:
+      - "messaging_app/**"
+  pull_request:
+    paths:
+      - "messaging_app/**"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+          MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
+          MYSQL_USER: ${{ secrets.MYSQL_USER }}
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd='mysqladmin ping -h localhost -p$${MYSQL_ROOT_PASSWORD}'
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    env:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
+      MYSQL_USER: ${{ secrets.MYSQL_USER }}
+      MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install apt packages (mysql client & build deps)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y default-libmysqlclient-dev build-essential mysql-client
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/messaging_app/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install Python dependencies
+        run: |
+          python -m venv .venv
+          . .venv/bin/activate
+          pip3 install --upgrade pip
+          pip3 install -r messaging_app/requirements.txt
+          pip3 install pytest pytest-cov
+
+      - name: Wait for MySQL to be ready
+        run: |
+          . .venv/bin/activate
+          retry=0
+          until mysql -h "${{ env.MYSQL_HOST }}" -u"${{ env.MYSQL_USER }}" -p"${{ env.MYSQL_PASSWORD }}" -e "SELECT 1" >/dev/null 2>&1
+          do
+            retry=$((retry+1))
+            echo "Waiting for MySQL... ($retry)"
+            if [ $retry -gt 30 ]; then
+              echo "MySQL did not become ready in time"
+              exit 1
+            fi
+            sleep 2
+          done
+          echo "MySQL is ready."
+
+      - name: Run migrations & tests
+        env:
+          DJANGO_SETTINGS_MODULE: messaging_app.settings
+          DATABASE_HOST: ${{ env.MYSQL_HOST }}
+          DATABASE_PORT: ${{ env.MYSQL_PORT }}
+          DATABASE_NAME: ${{ secrets.MYSQL_DATABASE }}
+          DATABASE_USER: ${{ secrets.MYSQL_USER }}
+          DATABASE_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+        run: |
+          . .venv/bin/activate
+          pip3 install -U pytest-django
+          python manage.py migrate --noinput
+          python manage.py test --verbosity=2
