@@ -1,0 +1,87 @@
+pipeline {
+  agent any
+
+  environment {
+    GITHUB_CREDENTIALS = credentials('GITHUB_CREDENTIALS_ID')
+    DOCKERHUB_CRED = credentials('DOCKERHUB_CREDENTIAL_ID')
+    IMAGE_NAME = "joel/messaging_app"
+    IMAGE_TAG = "${env.BUILD_NUMBER}"
+  }
+
+  stages {
+    stage('Checkout') {
+      steps {
+        checkout scm
+      }
+    }
+
+    stage('Prepare') {
+      steps {
+        sh '''
+          python3 -m venv .venv
+          . .venv/bin/activate
+          pip install --upgrade pip
+          pip install -r requirements.txt || true
+          pip install pytest pytest-cov
+        '''
+      }
+    }
+
+    stage('Run Tests') {
+      steps {
+        sh '''
+          . .venv/bin/activate
+          mkdir -p test-reports
+          pytest --junitxml=test-reports/junit.xml --cov=messaging_app --cov-report=xml || true
+        '''
+        junit 'test-reports/junit.xml'
+        publishHTML (target: [
+          allowMissing: true,
+          alwaysLinkToLastBuild: true,
+          keepAll: true,
+          reportDir: 'htmlcov',
+          reportFiles: 'index.html',
+          reportName: 'Coverage Report'
+        ])
+      }
+    }
+
+    stage('Lint') {
+      steps {
+        sh '''
+          . .venv/bin/activate
+          pip install flake8
+          flake8 || true
+        '''
+      }
+    }
+
+    stage('Build Docker Image') {
+      steps {
+        script { 
+          sh """
+            docker build -t ${IMAGE_NAME}:${IMAGE_TAG} -f Dockerfile .
+          """
+        }
+      }
+    }
+
+    stage('Push Docker Image') {
+      steps {
+        script {
+          sh """
+            echo ${DOCKERHUB_CRED_PSW} | docker login -u ${DOCKERHUB_CRED_USR} --password-stdin
+            docker push ${IMAGE_NAME}:${IMAGE_TAG}
+          """
+        }
+      }
+    }
+  }
+
+  post {
+    always {
+      archiveArtifacts artifacts: 'test-reports/**', allowEmptyArchive: true
+      cleanWs()
+    }
+  }
+}
