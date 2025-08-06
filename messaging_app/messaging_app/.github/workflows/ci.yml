@@ -62,7 +62,7 @@ jobs:
           . .venv/bin/activate
           pip3 install --upgrade pip
           pip3 install -r messaging_app/requirements.txt
-          pip3 install pytest pytest-cov
+          pip3 install pytest pytest-cov flake8
 
       - name: Wait for MySQL to be ready
         run: |
@@ -80,7 +80,14 @@ jobs:
           done
           echo "MySQL is ready."
 
-      - name: Run migrations & tests
+      - name: Run Flake8 lint check
+        run: |
+          . .venv/bin/activate
+          echo "Running flake8 linting..."
+          # --exit-zero will NOT fail the build, so we omit it to make failures stop the job
+          flake8 messaging_app
+
+      - name: Run migrations & tests with coverage
         env:
           DJANGO_SETTINGS_MODULE: messaging_app.settings
           DATABASE_HOST: ${{ env.MYSQL_HOST }}
@@ -92,4 +99,10 @@ jobs:
           . .venv/bin/activate
           pip3 install -U pytest-django
           python manage.py migrate --noinput
-          python manage.py test --verbosity=2
+          pytest --cov=messaging_app --cov-report=xml --cov-report=html
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: htmlcov
